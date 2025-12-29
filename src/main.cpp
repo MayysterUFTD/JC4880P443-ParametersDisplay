@@ -1,231 +1,307 @@
+/**
+ * @file main.cpp
+ * @brief ESP32-P4 Hardware Monitor Display with EEZ Studio UI
+ *
+ * MIPI DSI display (ST7701 480x800) with GT911 touch and LVGL 9.x
+ */
+
 #pragma GCC push_options
 #pragma GCC optimize("O3")
 
 #include <Arduino.h>
-#include "lvgl.h"
-#include "demos/lv_demos.h"
-#include "pins_config.h"
-#include "lvgl_port_v9.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <USB.h>
+#include <USBCDC.h>
+
+// ESP-IDF drivers
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "driver/i2c_master.h"
-#include "driver/spi_master.h"
-#include "esp_log.h"
-#include "esp_timer.h"
-#include "esp_heap_caps.h"
 #include "esp_ldo_regulator.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_mipi_dsi.h"
-#include "esp_cache.h"
-#include "esp_heap_caps.h"
-#include "esp_private/esp_cache_private.h"
-#include "touch/esp_lcd_touch_gt911.h"
+
+// LCD & Touch
 #include "lcd/esp_lcd_st7701.h"
+#include "touch/esp_lcd_touch_gt911.h"
+
+// LVGL
+#include "lvgl.h"
 #include "lvgl_port_v9.h"
-#include "demos/lv_demos.h"
-#include "driver/ppa.h"
-#include <USB.h>
-#include <USBCDC.h>
+#include "pins_config.h"
+
+// UI & Application
 #include "ui/ui.h"
 #include "ui/screens.h"
-//#include "eez-framework.h"
 #include "HWMonitor/HWMonitor.h"
+
+/*===========================================================================*/
+/*  CONFIGURATION                                                            */
+/*===========================================================================*/
 
 #define TAG "main"
 
-HWMonitor monitor;
-USBCDC USBSerial0;
+// Display
+#define LCD_H_RES 480
+#define LCD_V_RES 800
+#define LCD_RST_PIN GPIO_NUM_5
+#define LCD_BACKLIGHT_PIN GPIO_NUM_23
+#define LCD_LEDC_CHANNEL LEDC_CHANNEL_0
 
-#define BSP_MIPI_DSI_PHY_PWR_LDO_CHAN (3) // LDO_VO3 is connected to VDD_MIPI_DPHY
-#define BSP_MIPI_DSI_PHY_PWR_LDO_VOLTAGE_MV (2500)
+// I2C (Touch)
+#define I2C_PORT I2C_NUM_1
+#define I2C_SDA_PIN GPIO_NUM_7
+#define I2C_SCL_PIN GPIO_NUM_8
 
-#define BSP_LCD_DPI_BUFFER_NUMS (1)
+// MIPI DSI PHY Power
+#define MIPI_DSI_PHY_LDO_CHAN 3
+#define MIPI_DSI_PHY_LDO_MV 2500
 
-#define BSP_LCD_H_RES (480)
-#define BSP_LCD_V_RES (800)
+/*===========================================================================*/
+/*  GLOBALS                                                                  */
+/*===========================================================================*/
 
-#define BSP_I2C_NUM (I2C_NUM_1)
-#define BSP_I2C_SDA (GPIO_NUM_7)
-#define BSP_I2C_SCL (GPIO_NUM_8)
+extern "C" int16_t g_currentScreen;
 
-#define BSP_LCD_TOUCH_RST (GPIO_NUM_NC)
-#define BSP_LCD_TOUCH_INT (GPIO_NUM_NC)
+static i2c_master_bus_handle_t s_i2c_handle = NULL;
+static HWMonitor s_monitor;
+static USBCDC USBSerial;
 
-#define BSP_LCD_RST (GPIO_NUM_5)
+/*===========================================================================*/
+/*  BACKLIGHT CONTROL                                                        */
+/*===========================================================================*/
 
-i2c_master_bus_handle_t i2c_handle = NULL;
-
-#define BSP_LCD_BACKLIGHT GPIO_NUM_23
-#define LCD_LEDC_CH LEDC_CHANNEL_0
-static esp_err_t bsp_display_brightness_init(void)
+static void backlight_init(void)
 {
-  // Setup LEDC peripheral for PWM backlight control
-  const ledc_channel_config_t LCD_backlight_channel = {
-      .gpio_num = BSP_LCD_BACKLIGHT,
-      .speed_mode = LEDC_LOW_SPEED_MODE,
-      .channel = LCD_LEDC_CH,
-      .intr_type = LEDC_INTR_DISABLE,
-      .timer_sel = (ledc_timer_t)1,
-      .duty = 0,
-      .hpoint = 0};
-  const ledc_timer_config_t LCD_backlight_timer = {
+  const ledc_timer_config_t timer_cfg = {
       .speed_mode = LEDC_LOW_SPEED_MODE,
       .duty_resolution = LEDC_TIMER_10_BIT,
-      .timer_num = (ledc_timer_t)1,
+      .timer_num = LEDC_TIMER_1,
       .freq_hz = 5000,
       .clk_cfg = LEDC_AUTO_CLK};
 
-  ESP_ERROR_CHECK(ledc_timer_config(&LCD_backlight_timer));
-  ESP_ERROR_CHECK(ledc_channel_config(&LCD_backlight_channel));
-  return ESP_OK;
+  const ledc_channel_config_t channel_cfg = {
+      .gpio_num = LCD_BACKLIGHT_PIN,
+      .speed_mode = LEDC_LOW_SPEED_MODE,
+      .channel = LCD_LEDC_CHANNEL,
+      .intr_type = LEDC_INTR_DISABLE,
+      .timer_sel = LEDC_TIMER_1,
+      .duty = 0,
+      .hpoint = 0};
+
+  ledc_timer_config(&timer_cfg);
+  ledc_channel_config(&channel_cfg);
 }
 
-static esp_err_t bsp_display_brightness_set(int brightness_percent)
+static void backlight_set(uint8_t percent)
 {
-  if (brightness_percent > 100)
-  {
-    brightness_percent = 100;
-  }
-  if (brightness_percent < 0)
-  {
-    brightness_percent = 0;
-  }
-
-  ESP_LOGI(TAG, "Setting LCD backlight: %d%%", brightness_percent);
-  uint32_t duty_cycle = (1023 * brightness_percent) / 100; // LEDC resolution set to 10bits, thus: 100% = 1023
-  ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CH, duty_cycle));
-  ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CH));
-  return ESP_OK;
+  if (percent > 100)
+    percent = 100;
+  uint32_t duty = (1023 * percent) / 100;
+  ledc_set_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CHANNEL, duty);
+  ledc_update_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CHANNEL);
 }
 
-static esp_err_t bsp_display_backlight_off(void)
+/*===========================================================================*/
+/*  HARDWARE INITIALIZATION                                                  */
+/*===========================================================================*/
+
+static void init_i2c(void)
 {
-  return bsp_display_brightness_set(0);
+  i2c_master_bus_config_t cfg = {
+      .i2c_port = I2C_PORT,
+      .sda_io_num = I2C_SDA_PIN,
+      .scl_io_num = I2C_SCL_PIN,
+      .clk_source = I2C_CLK_SRC_DEFAULT,
+  };
+  i2c_new_master_bus(&cfg, &s_i2c_handle);
 }
 
-static esp_err_t bsp_display_backlight_on(void)
+static void init_mipi_dsi_power(void)
 {
-  return bsp_display_brightness_set(100);
+  static esp_ldo_channel_handle_t ldo_handle = NULL;
+  esp_ldo_channel_config_t cfg = {
+      .chan_id = MIPI_DSI_PHY_LDO_CHAN,
+      .voltage_mv = MIPI_DSI_PHY_LDO_MV,
+  };
+  esp_ldo_acquire_channel(&cfg, &ldo_handle);
 }
 
-IRAM_ATTR static bool mipi_dsi_lcd_on_vsync_event(esp_lcd_panel_handle_t panel, esp_lcd_dpi_panel_event_data_t *edata, void *user_ctx)
+static IRAM_ATTR bool lcd_vsync_callback(esp_lcd_panel_handle_t panel,
+                                         esp_lcd_dpi_panel_event_data_t *edata,
+                                         void *user_ctx)
 {
   return lvgl_port_notify_lcd_vsync();
 }
-void setup()
+
+static esp_lcd_panel_handle_t init_lcd(esp_lcd_dsi_bus_handle_t dsi_bus)
 {
-  Serial0.begin(115200);
-  delay(2000);
-  // Maksymalny bufor
-  USBSerial0.setRxBufferSize(4096);
-  USBSerial0.begin();
-  USB.begin();
-
-  Serial0.println("Waiting for data...\n");
-  bsp_display_brightness_init();
-
-  i2c_master_bus_config_t i2c_bus_conf = {
-      .i2c_port = BSP_I2C_NUM,
-      .sda_io_num = BSP_I2C_SDA,
-      .scl_io_num = BSP_I2C_SCL,
-      .clk_source = I2C_CLK_SRC_DEFAULT,
-  };
-  i2c_new_master_bus(&i2c_bus_conf, &i2c_handle);
-
-  static esp_ldo_channel_handle_t phy_pwr_chan = NULL;
-  esp_ldo_channel_config_t ldo_cfg = {
-      .chan_id = BSP_MIPI_DSI_PHY_PWR_LDO_CHAN,
-      .voltage_mv = BSP_MIPI_DSI_PHY_PWR_LDO_VOLTAGE_MV,
-  };
-  esp_ldo_acquire_channel(&ldo_cfg, &phy_pwr_chan);
-  ESP_LOGI(TAG, "MIPI DSI PHY Powered on");
-
-  esp_lcd_dsi_bus_handle_t mipi_dsi_bus;
-  esp_lcd_dsi_bus_config_t bus_config = ST7701_PANEL_BUS_DSI_2CH_CONFIG();
-
-  esp_lcd_new_dsi_bus(&bus_config, &mipi_dsi_bus);
-
-  ESP_LOGI(TAG, "Install MIPI DSI LCD control panel");
-  // we use DBI interface to send LCD commands and parameters
+  // DBI IO for commands
   esp_lcd_panel_io_handle_t io = NULL;
-  esp_lcd_dbi_io_config_t dbi_config = ST7701_PANEL_IO_DBI_CONFIG();
+  esp_lcd_dbi_io_config_t dbi_cfg = ST7701_PANEL_IO_DBI_CONFIG();
+  esp_lcd_new_panel_io_dbi(dsi_bus, &dbi_cfg, &io);
 
-  esp_lcd_new_panel_io_dbi(mipi_dsi_bus, &dbi_config, &io);
+  // DPI config
+  esp_lcd_dpi_panel_config_t dpi_cfg = ST7701_480_360_PANEL_60HZ_DPI_CONFIG(LCD_COLOR_PIXEL_FORMAT_RGB565);
+  dpi_cfg.num_fbs = LVGL_PORT_LCD_BUFFER_NUMS;
 
-  esp_lcd_panel_handle_t disp_panel = NULL;
-  esp_lcd_dpi_panel_config_t dpi_config = ST7701_480_360_PANEL_60HZ_DPI_CONFIG(LCD_COLOR_PIXEL_FORMAT_RGB565);
-
-  dpi_config.num_fbs = LVGL_PORT_LCD_BUFFER_NUMS;
-
-  st7701_vendor_config_t vendor_config = {
+  // Panel config
+  st7701_vendor_config_t vendor_cfg = {
       .mipi_config = {
-          .dsi_bus = mipi_dsi_bus,
-          .dpi_config = &dpi_config,
+          .dsi_bus = dsi_bus,
+          .dpi_config = &dpi_cfg,
       },
-      .flags = {
-          .use_mipi_interface = 1,
-      },
+      .flags = {.use_mipi_interface = 1},
   };
-  esp_lcd_panel_dev_config_t lcd_dev_config = {
-      .reset_gpio_num = BSP_LCD_RST,
+
+  esp_lcd_panel_dev_config_t panel_cfg = {
+      .reset_gpio_num = LCD_RST_PIN,
       .rgb_ele_order = ESP_LCD_COLOR_SPACE_RGB,
       .bits_per_pixel = 16,
-      .vendor_config = &vendor_config,
+      .vendor_config = &vendor_cfg,
   };
-  esp_lcd_new_panel_st7701(io, &lcd_dev_config, &disp_panel);
-  esp_lcd_panel_reset(disp_panel);
-  esp_lcd_panel_init(disp_panel);
 
+  esp_lcd_panel_handle_t panel = NULL;
+  esp_lcd_new_panel_st7701(io, &panel_cfg, &panel);
+  esp_lcd_panel_reset(panel);
+  esp_lcd_panel_init(panel);
+
+  // Register vsync callback
   esp_lcd_dpi_panel_event_callbacks_t cbs = {
 #if LVGL_PORT_AVOID_TEAR_MODE
-      .on_refresh_done = mipi_dsi_lcd_on_vsync_event,
+      .on_refresh_done = lcd_vsync_callback,
 #else
-      .on_color_trans_done = mipi_dsi_lcd_on_vsync_event,
+      .on_color_trans_done = lcd_vsync_callback,
 #endif
   };
-  esp_lcd_dpi_panel_register_event_callbacks(disp_panel, &cbs, NULL);
-  esp_lcd_panel_io_handle_t tp_io_handle = NULL;
-  esp_lcd_touch_handle_t tp_handle;
-  esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
-  tp_io_config.scl_speed_hz = 100000;
-  esp_lcd_new_panel_io_i2c(i2c_handle, &tp_io_config, &tp_io_handle);
-  const esp_lcd_touch_config_t tp_cfg = {
-      .x_max = BSP_LCD_H_RES,
-      .y_max = BSP_LCD_V_RES,
-      .rst_gpio_num = BSP_LCD_TOUCH_RST, // Shared with LCD reset
-      .int_gpio_num = BSP_LCD_TOUCH_INT,
-      .levels = {
-          .reset = 0,
-          .interrupt = 0,
-      },
-      .flags = {
-          .swap_xy = 0,
-          .mirror_x = 0,
-          .mirror_y = 0,
-      },
+  esp_lcd_dpi_panel_register_event_callbacks(panel, &cbs, NULL);
+
+  return panel;
+}
+
+static esp_lcd_touch_handle_t init_touch(void)
+{
+  esp_lcd_panel_io_handle_t io = NULL;
+  esp_lcd_panel_io_i2c_config_t io_cfg = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
+  io_cfg.scl_speed_hz = 100000;
+  esp_lcd_new_panel_io_i2c(s_i2c_handle, &io_cfg, &io);
+
+  esp_lcd_touch_config_t touch_cfg = {
+      .x_max = LCD_H_RES,
+      .y_max = LCD_V_RES,
+      .rst_gpio_num = GPIO_NUM_NC,
+      .int_gpio_num = GPIO_NUM_NC,
+      .levels = {.reset = 0, .interrupt = 0},
+      .flags = {.swap_xy = 0, .mirror_x = 0, .mirror_y = 0},
   };
 
-  esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &tp_handle);
+  esp_lcd_touch_handle_t handle = NULL;
+  esp_lcd_touch_new_i2c_gt911(io, &touch_cfg, &handle);
+  return handle;
+}
 
-  lvgl_port_interface_t interface = (dpi_config.flags.use_dma2d) ? LVGL_PORT_INTERFACE_MIPI_DSI_DMA : LVGL_PORT_INTERFACE_MIPI_DSI_NO_DMA;
-  ESP_LOGI(TAG, "interface is %d", interface);
-  ESP_ERROR_CHECK(lvgl_port_init(disp_panel, tp_handle, interface));
-  if (lvgl_port_lock(0))
+static bool init_ui(void)
+{
+  // Wait for LVGL task to stabilize
+  vTaskDelay(pdMS_TO_TICKS(500));
+
+  // Try to acquire lock and initialize UI
+  for (int attempt = 0; attempt < 50; attempt++)
   {
-    ui_init();
-    lvgl_port_unlock();
+    if (lvgl_port_lock(100))
+    {
+      ui_init();
+      lvgl_port_unlock();
+      return true;
+    }
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
-  monitor.begin();
-  bsp_display_brightness_set(50);
+  return false;
+}
+
+/*===========================================================================*/
+/*  ARDUINO SETUP & LOOP                                                     */
+/*===========================================================================*/
+
+void setup()
+{
+  Serial.begin(115200);
+  delay(500);
+
+  // USB CDC
+  USBSerial.setRxBufferSize(4096);
+  USBSerial.begin();
+  USB.begin();
+
+  Serial.println("=== Hardware Monitor Display ===");
+
+  // Initialize hardware
+  backlight_init();
+  init_i2c();
+  init_mipi_dsi_power();
+
+  // Initialize DSI bus
+  esp_lcd_dsi_bus_handle_t dsi_bus = NULL;
+  esp_lcd_dsi_bus_config_t bus_cfg = ST7701_PANEL_BUS_DSI_2CH_CONFIG();
+  esp_lcd_new_dsi_bus(&bus_cfg, &dsi_bus);
+
+  // Initialize LCD and touch
+  esp_lcd_panel_handle_t lcd = init_lcd(dsi_bus);
+  esp_lcd_touch_handle_t touch = init_touch();
+
+  // Initialize LVGL port
+  lvgl_port_interface_t iface = LVGL_PORT_INTERFACE_MIPI_DSI_NO_DMA;
+  ESP_ERROR_CHECK(lvgl_port_init(lcd, touch, iface));
+
+  // Initialize EEZ UI
+  if (!init_ui())
+  {
+    Serial.println("ERROR: UI initialization failed!");
+  }
+
+  // Start monitor and enable backlight
+  s_monitor.begin();
+  backlight_set(50);
+
+  Serial.println("=== Ready ===");
 }
 
 void loop()
 {
-  ui_tick();
-  monitor.update(USBSerial0); // or any Stream
-  lv_label_set_text_fmt(objects.panel_main_channel1__label_temperature, "Temp: %.1f C", monitor.getCpuTemp());
-  // Update serial label
+  // Update UI
+  if (lvgl_port_lock(10))
+  {
+    if (g_currentScreen >= 0)
+    {
+      ui_tick();
+    }
+    lvgl_port_unlock();
+  }
+
+  // Process sensor data from USB
+  if (s_monitor.update(USBSerial))
+  {
+    // Update display with new data
+    if (lvgl_port_lock(10))
+    {
+      lv_label_set_text_fmt(objects.label1,
+                            "%.1fC", s_monitor.get(0x34));
+      lv_arc_set_value(objects.arc1,
+                       (int32_t)s_monitor.get(0x11));
+      lvgl_port_unlock();
+    }
+    Serial.println(s_monitor.sensorCount);
+    // String debug;
+    // for (size_t i = 0; i < 17; i++)
+    // {
+    //   debug += "0x" + String(s_monitor.getSensorByIndex(i)->id, HEX) + " ";
+    // }
+
+    // lv_label_set_text(objects.test, debug.c_str());
+    //  s_monitor.findSensor
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(5));
 }
+
+#pragma GCC pop_options
