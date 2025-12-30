@@ -280,6 +280,116 @@ void remove_style_default_scale(lv_obj_t *obj) {
 };
 
 //
+// Style: barDefaulta
+//
+
+void init_style_bar_defaulta_MAIN_DEFAULT(lv_style_t *style) {
+    lv_style_set_radius(style, 0);
+    lv_style_set_bg_color(style, lv_color_hex(0xff767676));
+};
+
+lv_style_t *get_style_bar_defaulta_MAIN_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_bar_defaulta_MAIN_DEFAULT(style);
+    }
+    return style;
+};
+
+void init_style_bar_defaulta_INDICATOR_DEFAULT(lv_style_t *style) {
+    lv_style_set_radius(style, 0);
+    lv_style_set_shadow_width(style, 25);
+    lv_style_set_shadow_spread(style, 1);
+    lv_style_set_shadow_color(style, lv_color_hex(0xff00ffff));
+    lv_style_set_bg_color(style, lv_color_hex(0xff00ffff));
+};
+
+lv_style_t *get_style_bar_defaulta_INDICATOR_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_bar_defaulta_INDICATOR_DEFAULT(style);
+    }
+    return style;
+};
+
+void add_style_bar_defaulta(lv_obj_t *obj) {
+    (void)obj;
+    lv_obj_add_style(obj, get_style_bar_defaulta_MAIN_DEFAULT(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_style(obj, get_style_bar_defaulta_INDICATOR_DEFAULT(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+};
+
+void remove_style_bar_defaulta(lv_obj_t *obj) {
+    (void)obj;
+    lv_obj_remove_style(obj, get_style_bar_defaulta_MAIN_DEFAULT(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_remove_style(obj, get_style_bar_defaulta_INDICATOR_DEFAULT(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+};
+
+//
+// Style: defaultArc
+//
+
+void init_style_default_arc_KNOB_DEFAULT(lv_style_t *style) {
+    lv_style_set_bg_opa(style, 0);
+};
+
+lv_style_t *get_style_default_arc_KNOB_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_default_arc_KNOB_DEFAULT(style);
+    }
+    return style;
+};
+
+void init_style_default_arc_MAIN_DEFAULT(lv_style_t *style) {
+    lv_style_set_arc_rounded(style, false);
+};
+
+lv_style_t *get_style_default_arc_MAIN_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_default_arc_MAIN_DEFAULT(style);
+    }
+    return style;
+};
+
+void init_style_default_arc_INDICATOR_DEFAULT(lv_style_t *style) {
+    lv_style_set_arc_rounded(style, false);
+    lv_style_set_arc_color(style, lv_color_hex(0xffa7a7a7));
+};
+
+lv_style_t *get_style_default_arc_INDICATOR_DEFAULT() {
+    static lv_style_t *style;
+    if (!style) {
+        style = lv_malloc(sizeof(lv_style_t));
+        lv_style_init(style);
+        init_style_default_arc_INDICATOR_DEFAULT(style);
+    }
+    return style;
+};
+
+void add_style_default_arc(lv_obj_t *obj) {
+    (void)obj;
+    lv_obj_add_style(obj, get_style_default_arc_KNOB_DEFAULT(), LV_PART_KNOB | LV_STATE_DEFAULT);
+    lv_obj_add_style(obj, get_style_default_arc_MAIN_DEFAULT(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_style(obj, get_style_default_arc_INDICATOR_DEFAULT(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+};
+
+void remove_style_default_arc(lv_obj_t *obj) {
+    (void)obj;
+    lv_obj_remove_style(obj, get_style_default_arc_KNOB_DEFAULT(), LV_PART_KNOB | LV_STATE_DEFAULT);
+    lv_obj_remove_style(obj, get_style_default_arc_MAIN_DEFAULT(), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_remove_style(obj, get_style_default_arc_INDICATOR_DEFAULT(), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+};
+
+//
 //
 //
 
@@ -293,6 +403,8 @@ void add_style(lv_obj_t *obj, int32_t styleIndex) {
         add_style_container_parameters,
         add_style_bar_default,
         add_style_default_scale,
+        add_style_bar_defaulta,
+        add_style_default_arc,
     };
     add_style_funcs[styleIndex](obj);
 }
@@ -307,6 +419,8 @@ void remove_style(lv_obj_t *obj, int32_t styleIndex) {
         remove_style_container_parameters,
         remove_style_bar_default,
         remove_style_default_scale,
+        remove_style_bar_defaulta,
+        remove_style_default_arc,
     };
     remove_style_funcs[styleIndex](obj);
 }

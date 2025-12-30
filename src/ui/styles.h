@@ -45,6 +45,19 @@ lv_style_t *get_style_default_scale_MAIN_DEFAULT();
 void add_style_default_scale(lv_obj_t *obj);
 void remove_style_default_scale(lv_obj_t *obj);
 
+// Style: barDefaulta
+lv_style_t *get_style_bar_defaulta_MAIN_DEFAULT();
+lv_style_t *get_style_bar_defaulta_INDICATOR_DEFAULT();
+void add_style_bar_defaulta(lv_obj_t *obj);
+void remove_style_bar_defaulta(lv_obj_t *obj);
+
+// Style: defaultArc
+lv_style_t *get_style_default_arc_KNOB_DEFAULT();
+lv_style_t *get_style_default_arc_MAIN_DEFAULT();
+lv_style_t *get_style_default_arc_INDICATOR_DEFAULT();
+void add_style_default_arc(lv_obj_t *obj);
+void remove_style_default_arc(lv_obj_t *obj);
+
 
 
 #ifdef __cplusplus

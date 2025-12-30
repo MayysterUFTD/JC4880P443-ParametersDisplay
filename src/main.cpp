@@ -34,6 +34,7 @@
 #include "ui/ui.h"
 #include "ui/screens.h"
 #include "HWMonitor/HWMonitor.h"
+#include "SmoothValue.h"
 
 /*===========================================================================*/
 /*  CONFIGURATION                                                            */
@@ -66,6 +67,7 @@ extern "C" int16_t g_currentScreen;
 static i2c_master_bus_handle_t s_i2c_handle = NULL;
 static HWMonitor s_monitor;
 static USBCDC USBSerial;
+static SmoothValueManager<32> s_smooth(0.01f); // Wygładzanie wartości sensorów
 
 /*===========================================================================*/
 /*  BACKLIGHT CONTROL                                                        */
@@ -268,40 +270,75 @@ void setup()
 
 void loop()
 {
-  // Update UI
+  // Aktualizuj wartości docelowe gdy przychodzą nowe dane z USB
+  if (s_monitor.update(USBSerial))
+  {
+    // CPU
+    s_smooth.setTarget(0x01, s_monitor.get(0x01)); // CPU Load
+    s_smooth.setTarget(0x02, s_monitor.get(0x02)); // CPU Temp
+
+    // GPU
+    s_smooth.setTarget(0x5D, s_monitor.get(0x5D)); // GPU Load
+    s_smooth.setTarget(0x5A, s_monitor.get(0x5A)); // GPU Temp
+
+    // RAM
+    s_smooth.setTarget(0x38, s_monitor.get(0x38)); // RAM Used GB
+    s_smooth.setTarget(0x39, s_monitor.get(0x39)); // RAM Available GB
+    s_smooth.setTarget(0x3A, s_monitor.get(0x3A)); // RAM Load %
+
+    Serial.println(s_monitor.sensorCount);
+  }
+
+  // Interpoluj wartości w każdej klatce (płynne przejścia)
+  s_smooth.updateAll();
+
+  // Update UI - teraz wykonuje się w każdej klatce z wygładzonymi wartościami
   if (lvgl_port_lock(10))
   {
     if (g_currentScreen >= 0)
     {
       ui_tick();
     }
+
+    // CPU - wygładzone wartości
+    lv_label_set_text_fmt(objects.label_cpu_load,
+                          "%.0f", s_smooth.get(0x01));
+    lv_label_set_text_fmt(objects.label_cpu_temp,
+                          "%.0f", s_smooth.get(0x02));
+    lv_arc_set_value(objects.arc_cpu_load,
+                     (int)s_smooth.getInt(0x01));
+    lv_arc_set_value(objects.arc_cpu_temp,
+                     (int)s_smooth.getInt(0x02));
+
+    // GPU - wygładzone wartości
+    lv_label_set_text_fmt(objects.label_gpu_load,
+                          "%.0f", s_smooth.get(0x5D));
+    lv_label_set_text_fmt(objects.label_gpu_temp,
+                          "%.0f", s_smooth.get(0x5A));
+
+    lv_arc_set_value(objects.arc_gpu_load,
+                     (int)s_smooth.getInt(0x5D));
+    lv_arc_set_value(objects.arc_gpu_temp,
+                     (int)s_smooth.getInt(0x5A));
+
+    // RAM - wygładzone wartości
+    float ram_used_gb = s_smooth.get(0x38);
+    float ram_available_gb = s_smooth.get(0x39);
+    float ram_load_percent = s_smooth.get(0x3A);
+
+    lv_bar_set_value(objects.bar_ram_used,
+                     (int)(ram_load_percent + 0.5f), LV_ANIM_OFF); // Wyłącz animację LVGL - mamy własną
+    lv_label_set_text_fmt(objects.label_ram_gb_used,
+                          "%.0f", ram_used_gb);
+    lv_label_set_text_fmt(objects.label_ram_gb_avalivable,
+                          "%.0f", ram_available_gb);
+    lv_label_set_text_fmt(objects.label_ram_used,
+                          "%.1f", ram_load_percent);
+
     lvgl_port_unlock();
   }
 
-  // Process sensor data from USB
-  if (s_monitor.update(USBSerial))
-  {
-    // Update display with new data
-    if (lvgl_port_lock(10))
-    {
-      lv_label_set_text_fmt(objects.label1,
-                            "%.1fC", s_monitor.get(0x34));
-      lv_arc_set_value(objects.arc1,
-                       (int32_t)s_monitor.get(0x11));
-      lvgl_port_unlock();
-    }
-    Serial.println(s_monitor.sensorCount);
-    // String debug;
-    // for (size_t i = 0; i < 17; i++)
-    // {
-    //   debug += "0x" + String(s_monitor.getSensorByIndex(i)->id, HEX) + " ";
-    // }
-
-    // lv_label_set_text(objects.test, debug.c_str());
-    //  s_monitor.findSensor
-  }
-
-  vTaskDelay(pdMS_TO_TICKS(5));
+  vTaskDelay(pdMS_TO_TICKS(16)); // ~60 FPS dla płynnej animacji
 }
 
 #pragma GCC pop_options
