@@ -67,7 +67,7 @@ extern "C" int16_t g_currentScreen;
 static i2c_master_bus_handle_t s_i2c_handle = NULL;
 static HWMonitor s_monitor;
 static USBCDC USBSerial;
-static SmoothValueManager<32> s_smooth(0.01f); // Wygładzanie wartości sensorów
+static SmoothValueManager<32> s_smooth(0.05f); // Wygładzanie wartości sensorów
 
 /*===========================================================================*/
 /*  BACKLIGHT CONTROL                                                        */
