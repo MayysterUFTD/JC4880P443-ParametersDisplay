@@ -17,6 +17,7 @@ extern const lv_font_t ui_font_chakra30;
 extern const lv_font_t ui_font_chakra40;
 extern const lv_font_t ui_font_orbition60;
 extern const lv_font_t ui_font_chakra50;
+extern const lv_font_t ui_font_chakra31;
 
 
 #ifdef __cplusplus

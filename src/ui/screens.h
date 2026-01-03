@@ -19,11 +19,15 @@ typedef struct _objects_t {
     lv_obj_t *arc_gpu_load;
     lv_obj_t *label_gpu_temp;
     lv_obj_t *label_gpu_load;
+    lv_obj_t *bar_ram_used_1;
+    lv_obj_t *bar_gpu_used_memory;
+    lv_obj_t *label_gpu_used_memory_percent;
     lv_obj_t *label_ram_used;
     lv_obj_t *label_ram_gb_used;
     lv_obj_t *label_ram_gb_avalivable;
-    lv_obj_t *arc1;
-    lv_obj_t *label1;
+    lv_obj_t *obj0;
+    lv_obj_t *obj1;
+    lv_obj_t *obj2;
 } objects_t;
 
 extern objects_t objects;

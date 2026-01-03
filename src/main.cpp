@@ -274,17 +274,18 @@ void loop()
   if (s_monitor.update(USBSerial))
   {
     // CPU
-    s_smooth.setTarget(0x01, s_monitor.get(0x01)); // CPU Load
-    s_smooth.setTarget(0x02, s_monitor.get(0x02)); // CPU Temp
+    s_smooth.setTarget(0x0001, s_monitor.get(0x0001)); // CPU Load
+    s_smooth.setTarget(0x0003, s_monitor.get(0x0003)); // CPU Temp
 
     // GPU
-    s_smooth.setTarget(0x5D, s_monitor.get(0x5D)); // GPU Load
-    s_smooth.setTarget(0x5A, s_monitor.get(0x5A)); // GPU Temp
+    s_smooth.setTarget(0x005D, s_monitor.get(0x005D)); // GPU Load
+    s_smooth.setTarget(0x005A, s_monitor.get(0x005A)); // GPU Temp
+    s_smooth.setTarget(0x0060, s_monitor.get(0x0060)); // GPU Used Memory Percent
 
     // RAM
-    s_smooth.setTarget(0x38, s_monitor.get(0x38)); // RAM Used GB
-    s_smooth.setTarget(0x39, s_monitor.get(0x39)); // RAM Available GB
-    s_smooth.setTarget(0x3A, s_monitor.get(0x3A)); // RAM Load %
+    s_smooth.setTarget(0x0038, s_monitor.get(0x0038)); // RAM Used GB
+    s_smooth.setTarget(0x0039, s_monitor.get(0x0039)); // RAM Available GB
+    s_smooth.setTarget(0x003A, s_monitor.get(0x003A)); // RAM Load %
 
     Serial.println(s_monitor.sensorCount);
   }
@@ -302,29 +303,32 @@ void loop()
 
     // CPU - wygładzone wartości
     lv_label_set_text_fmt(objects.label_cpu_load,
-                          "%.0f", s_smooth.get(0x01));
+                          "%.0f", s_smooth.get(0x0001));
     lv_label_set_text_fmt(objects.label_cpu_temp,
-                          "%.0f", s_smooth.get(0x02));
+                          "%.0f", s_smooth.get(0x0003));
     lv_arc_set_value(objects.arc_cpu_load,
-                     (int)s_smooth.getInt(0x01));
+                     (int)s_smooth.getInt(0x0001));
     lv_arc_set_value(objects.arc_cpu_temp,
-                     (int)s_smooth.getInt(0x02));
+                     (int)s_smooth.getInt(0x0003));
 
     // GPU - wygładzone wartości
     lv_label_set_text_fmt(objects.label_gpu_load,
-                          "%.0f", s_smooth.get(0x5D));
+                          "%.0f", s_smooth.get(0x005D));
     lv_label_set_text_fmt(objects.label_gpu_temp,
-                          "%.0f", s_smooth.get(0x5A));
+                          "%.0f", s_smooth.get(0x005A));
 
     lv_arc_set_value(objects.arc_gpu_load,
-                     (int)s_smooth.getInt(0x5D));
+                     (int)s_smooth.getInt(0x005D));
     lv_arc_set_value(objects.arc_gpu_temp,
-                     (int)s_smooth.getInt(0x5A));
-
+                     (int)s_smooth.getInt(0x005A));
+    lv_bar_set_value(objects.bar_gpu_used_memory,
+                     s_smooth.getInt(0x0060), LV_ANIM_OFF); // Wy
+    lv_label_set_text_fmt(objects.label_gpu_used_memory_percent,
+                          "%.0f%%", s_smooth.get(0x60));
     // RAM - wygładzone wartości
-    float ram_used_gb = s_smooth.get(0x38);
-    float ram_available_gb = s_smooth.get(0x39);
-    float ram_load_percent = s_smooth.get(0x3A);
+    float ram_used_gb = s_smooth.get(0x0038);
+    float ram_available_gb = s_smooth.get(0x0039);
+    float ram_load_percent = s_smooth.get(0x003A);
 
     lv_bar_set_value(objects.bar_ram_used,
                      (int)(ram_load_percent + 0.5f), LV_ANIM_OFF); // Wyłącz animację LVGL - mamy własną
@@ -338,7 +342,7 @@ void loop()
     lvgl_port_unlock();
   }
 
-  vTaskDelay(pdMS_TO_TICKS(16)); // ~60 FPS dla płynnej animacji
+  vTaskDelay(pdMS_TO_TICKS(20)); // ~60 FPS dla płynnej animacji
 }
 
 #pragma GCC pop_options

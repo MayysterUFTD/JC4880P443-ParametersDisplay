@@ -83,9 +83,10 @@ void create_screen_main() {
                                         }
                                         {
                                             lv_obj_t *obj = lv_label_create(parent_obj);
-                                            lv_obj_set_pos(obj, 106, 74);
+                                            lv_obj_set_pos(obj, 92, 65);
                                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                             add_style_label15(obj);
+                                            lv_obj_set_style_text_font(obj, &ui_font_orbition20, LV_PART_MAIN | LV_STATE_DEFAULT);
                                             lv_label_set_text(obj, "TEMP");
                                         }
                                         {
@@ -110,7 +111,7 @@ void create_screen_main() {
                                 }
                                 {
                                     lv_obj_t *obj = lv_label_create(parent_obj);
-                                    lv_obj_set_pos(obj, 255, 229);
+                                    lv_obj_set_pos(obj, 259, 229);
                                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                     add_style_label15(obj);
                                     lv_label_set_text(obj, "LOAD");
@@ -136,15 +137,15 @@ void create_screen_main() {
                                 }
                                 {
                                     lv_obj_t *obj = lv_label_create(parent_obj);
-                                    lv_obj_set_pos(obj, 108, 166);
+                                    lv_obj_set_pos(obj, 109, 167);
                                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                     add_style_label15(obj);
-                                    lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_text_font(obj, &ui_font_orbition20, LV_PART_MAIN | LV_STATE_DEFAULT);
                                     lv_label_set_text(obj, "o");
                                 }
                                 {
                                     lv_obj_t *obj = lv_label_create(parent_obj);
-                                    lv_obj_set_pos(obj, 261, 248);
+                                    lv_obj_set_pos(obj, 265, 248);
                                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                     add_style_label15(obj);
                                     lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -185,17 +186,18 @@ void create_screen_main() {
                                         }
                                         {
                                             lv_obj_t *obj = lv_label_create(parent_obj);
-                                            lv_obj_set_pos(obj, 109, 142);
+                                            lv_obj_set_pos(obj, 110, 143);
                                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                             add_style_label15(obj);
-                                            lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                            lv_obj_set_style_text_font(obj, &ui_font_orbition20, LV_PART_MAIN | LV_STATE_DEFAULT);
                                             lv_label_set_text(obj, "o");
                                         }
                                         {
                                             lv_obj_t *obj = lv_label_create(parent_obj);
-                                            lv_obj_set_pos(obj, 106, 74);
+                                            lv_obj_set_pos(obj, 92, 65);
                                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                             add_style_label15(obj);
+                                            lv_obj_set_style_text_font(obj, &ui_font_orbition20, LV_PART_MAIN | LV_STATE_DEFAULT);
                                             lv_label_set_text(obj, "TEMP");
                                         }
                                         {
@@ -220,7 +222,7 @@ void create_screen_main() {
                                 }
                                 {
                                     lv_obj_t *obj = lv_label_create(parent_obj);
-                                    lv_obj_set_pos(obj, 459, 229);
+                                    lv_obj_set_pos(obj, 455, 229);
                                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                     add_style_label15(obj);
                                     lv_label_set_text(obj, "LOAD");
@@ -238,11 +240,57 @@ void create_screen_main() {
                                 }
                                 {
                                     lv_obj_t *obj = lv_label_create(parent_obj);
-                                    lv_obj_set_pos(obj, 465, 248);
+                                    lv_obj_set_pos(obj, 461, 248);
                                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                                     add_style_label15(obj);
                                     lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
                                     lv_label_set_text(obj, "%");
+                                }
+                                {
+                                    // barRamUsed_1
+                                    lv_obj_t *obj = lv_bar_create(parent_obj);
+                                    objects.bar_ram_used_1 = obj;
+                                    lv_obj_set_pos(obj, 357, 9);
+                                    lv_obj_set_size(obj, 20, 371);
+                                    lv_bar_set_value(obj, 25, LV_ANIM_OFF);
+                                    add_style_bar_default(obj);
+                                }
+                                {
+                                    // barGpuUsedMemory
+                                    lv_obj_t *obj = lv_bar_create(parent_obj);
+                                    objects.bar_gpu_used_memory = obj;
+                                    lv_obj_set_pos(obj, 381, 9);
+                                    lv_obj_set_size(obj, 20, 371);
+                                    lv_bar_set_value(obj, 25, LV_ANIM_OFF);
+                                    add_style_bar_default(obj);
+                                }
+                                {
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    lv_obj_set_pos(obj, 418, 9);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    add_style_label15(obj);
+                                    lv_obj_set_style_transform_rotation(obj, 900, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "MEMORY: ");
+                                }
+                                {
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    lv_obj_set_pos(obj, 356, 9);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    add_style_label15(obj);
+                                    lv_obj_set_style_transform_rotation(obj, 900, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_base_dir(obj, LV_BASE_DIR_RTL, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, ":MEMORY");
+                                }
+                                {
+                                    // labelGpuUsedMemoryPercent
+                                    lv_obj_t *obj = lv_label_create(parent_obj);
+                                    objects.label_gpu_used_memory_percent = obj;
+                                    lv_obj_set_pos(obj, 429, 75);
+                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                    add_style_label15(obj);
+                                    lv_obj_set_style_transform_rotation(obj, 900, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
+                                    lv_label_set_text(obj, "100%");
                                 }
                             }
                         }
@@ -318,26 +366,33 @@ void create_screen_main() {
                     {
                         lv_obj_t *parent_obj = obj;
                         {
-                            // arc1
-                            lv_obj_t *obj = lv_arc_create(parent_obj);
-                            objects.arc1 = obj;
-                            lv_obj_set_pos(obj, 230, 55);
-                            lv_obj_set_size(obj, 300, 300);
-                            lv_arc_set_value(obj, 25);
-                            lv_arc_set_bg_start_angle(obj, 90);
-                            lv_arc_set_bg_end_angle(obj, 0);
-                            {
-                                lv_obj_t *parent_obj = obj;
-                                {
-                                    // label1
-                                    lv_obj_t *obj = lv_label_create(parent_obj);
-                                    objects.label1 = obj;
-                                    lv_obj_set_pos(obj, 112, 129);
-                                    lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                                    add_style_label30(obj);
-                                    lv_label_set_text(obj, "Text");
-                                }
-                            }
+                            lv_obj_t *obj = lv_obj_create(parent_obj);
+                            objects.obj0 = obj;
+                            lv_obj_set_pos(obj, 209, 91);
+                            lv_obj_set_size(obj, 300, 200);
+                            add_style_panel_default(obj);
+                            lv_obj_set_style_border_color(obj, lv_color_hex(0xff6a798f), LV_PART_MAIN | LV_STATE_DEFAULT);
+                        }
+                        {
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.obj1 = obj;
+                            lv_obj_set_pos(obj, 224, 74);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            add_style_label30(obj);
+                            lv_obj_set_style_text_color(obj, lv_color_hex(0xffff0000), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_opa(obj, 175, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_label_set_text(obj, "Virtual");
+                        }
+                        {
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.obj2 = obj;
+                            lv_obj_set_pos(obj, 223, 75);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            add_style_label30(obj);
+                            lv_obj_set_style_text_font(obj, &ui_font_chakra30, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_obj_set_style_text_color(obj, lv_color_hex(0xff00f4ff), LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_label_set_text(obj, "Virtual");
                         }
                     }
                 }
@@ -370,11 +425,15 @@ void delete_screen_main() {
     objects.arc_gpu_load = 0;
     objects.label_gpu_temp = 0;
     objects.label_gpu_load = 0;
+    objects.bar_ram_used_1 = 0;
+    objects.bar_gpu_used_memory = 0;
+    objects.label_gpu_used_memory_percent = 0;
     objects.label_ram_used = 0;
     objects.label_ram_gb_used = 0;
     objects.label_ram_gb_avalivable = 0;
-    objects.arc1 = 0;
-    objects.label1 = 0;
+    objects.obj0 = 0;
+    objects.obj1 = 0;
+    objects.obj2 = 0;
     deletePageFlowState(0);
 }
 
@@ -1534,7 +1593,7 @@ extern void add_style(lv_obj_t *obj, int32_t styleIndex);
 extern void remove_style(lv_obj_t *obj, int32_t styleIndex);
 
 static const char *screen_names[] = { "Main" };
-static const char *object_names[] = { "main", "main_tabview", "bar_ram_used", "arc_cpu_temp", "arc_cpu_load", "label_cpu_temp", "label_cpu_load", "arc_gpu_temp", "arc_gpu_load", "label_gpu_temp", "label_gpu_load", "label_ram_used", "label_ram_gb_used", "label_ram_gb_avalivable", "arc1", "label1" };
+static const char *object_names[] = { "main", "main_tabview", "bar_ram_used", "arc_cpu_temp", "arc_cpu_load", "label_cpu_temp", "label_cpu_load", "arc_gpu_temp", "arc_gpu_load", "label_gpu_temp", "label_gpu_load", "bar_ram_used_1", "bar_gpu_used_memory", "label_gpu_used_memory_percent", "label_ram_used", "label_ram_gb_used", "label_ram_gb_avalivable", "obj0", "obj1", "obj2" };
 static const char *style_names[] = { "Label30", "panelDefault", "Label15", "panelParameters", "containerParameters", "barDefault", "defaultScale", "barDefaulta", "defaultArc" };
 
 
